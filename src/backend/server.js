@@ -1,18 +1,12 @@
+// 1. O import do dotenv DEVE ser a primeiríssima linha.
+// Isso garante que as variáveis existam antes que o 'db_connection.js' tente usá-las.
+import 'dotenv/config'; 
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
 import apiRouter from './api/routes.js';
 import { pool } from './database/db_connection.js';
 import iniciarCronJobs from './jobs/dailyReset.js';
-
-// Configuração de Ambiente
-// Só carrega o arquivo .env se estivermos rodando localmente (não em produção)
-if (process.env.NODE_ENV !== 'production') {
-    dotenv.config({ path: './src/backend/.env' });
-    console.log('🔧 Modo Desenvolvimento: Carregando .env local');
-} else {
-    console.log('🌍 Modo Produção: Usando variáveis de ambiente do Render');
-}
 
 const app = express();
 
@@ -38,6 +32,7 @@ app.listen(PORT, async () => {
     
     // Teste de Conexão com o Banco
     try {
+        // Agora o pool já terá a senha carregada corretamente
         await pool.query('SELECT 1');
         console.log('✅ Banco de dados conectado com sucesso!');
     } catch (err) {
