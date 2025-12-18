@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
+import api from '../../services/api'; // <--- IMPORTANTE: Importando nosso centralizador
 
-// Recebendo id e claimed nas props
 const ChallengeCard = ({ id, title, reward, current, target, type, claimed }) => {
   const [loading, setLoading] = useState(false);
 
@@ -12,7 +12,7 @@ const ChallengeCard = ({ id, title, reward, current, target, type, claimed }) =>
   const canClaim = isCompleted && !claimed;
 
   const handleResgatar = async () => {
-    // ⚠️ CORREÇÃO IMPORTANTE: Usando 'capiba_user' igual ao resto do app
+    // Busca usuário no LocalStorage
     const storedUser = localStorage.getItem('capiba_user');
     
     if (!storedUser) {
@@ -23,30 +23,27 @@ const ChallengeCard = ({ id, title, reward, current, target, type, claimed }) =>
     setLoading(true);
 
     try {
-      // Chama o backend (Rota nova que criamos)
-      // Ajuste a URL se seu backend não estiver na porta 3001
-      const response = await fetch('http://localhost:3001/api/challenges/claim', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-            userId: user.user_id, 
-            challengeId: id 
-        }),
+      // --- AQUI MUDOU ---
+      // Usamos 'api.post' em vez de fetch. 
+      // Não precisa digitar a URL inteira, ele pega do api.js
+      const response = await api.post('/challenges/claim', {
+        userId: user.user_id, 
+        challengeId: id 
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Erro ao resgatar');
-      }
+      // O Axios já traz os dados prontos em response.data
+      const data = response.data; 
 
       // Sucesso!
-      alert(`🎉 Parabéns! +${data.reward} Capibas na conta!`);
+      alert(`🎉 Parabéns! +${data.reward || reward} Capibas na conta!`);
       window.location.reload(); // Recarrega para atualizar saldo e bloquear o botão
 
     } catch (error) {
-      console.error("Erro:", error);
-      alert(error.message || "Erro de conexão");
+      console.error("Erro no resgate:", error);
+      
+      // Tratamento de erro específico do Axios
+      const errorMessage = error.response?.data?.error || "Erro de conexão com o servidor.";
+      alert(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -162,7 +159,6 @@ const styles = {
     color: '#999',
     textAlign: 'right'
   },
-  // Botão Cinza (Incompleto)
   btnActive: {
     border: 'none',
     background: '#f5f5f5',
@@ -173,7 +169,6 @@ const styles = {
     cursor: 'not-allowed',
     fontWeight: 'bold'
   },
-  // Botão Verde Forte (Pronto para resgatar)
   btnCompleted: {
     border: 'none',
     background: '#4CAF50',
@@ -186,7 +181,6 @@ const styles = {
     boxShadow: '0 2px 5px rgba(76, 175, 80, 0.3)',
     transition: 'transform 0.1s'
   },
-  // Botão Verde Claro (Já Resgatado)
   btnClaimed: {
     border: '1px solid #E8F5E9',
     background: '#E8F5E9',
