@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Navigation, Info, CheckCircle, ArrowRight } from 'lucide-react'; // Adicionei ArrowRight
+import { MapPin, Navigation, Info, CheckCircle, ArrowRight } from 'lucide-react'; 
 import BottomMenu from "../../components/BottomMenu/BottomMenu";
 import api from '../../services/api';
 
-// --- IMPORT DAS IMAGENS LOCAIS (Nomes exatos conforme seu print) ---
+// --- IMPORT DAS IMAGENS LOCAIS ---
 import marcoZeroImg from '../../assets/tourist/marco-zero-img.jpg';
 import jaqueiraImg from '../../assets/tourist/parque-da-jaqueira-img.jpg';
 import boaViagemImg from '../../assets/tourist/boa-viagem-img.jpg';
@@ -22,17 +22,35 @@ const getSpotImage = (name) => {
 
 export default function TouristSpotsScreen() {
     const navigate = useNavigate();
+    // AQUI ESTAVA A CONFUSÃO: A variável se chama 'spots', então o setter é 'setSpots'
     const [spots, setSpots] = useState([]);
     const [userCoords, setUserCoords] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-    api.get('/tourist-spots') 
-        .then(response => {
-            setPontosTuristicos(response.data);
-        })
-        .catch(error => console.error(error));
-}, []);
+        // 1. Pegar localização do usuário para calcular distância
+        if ('geolocation' in navigator) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    setUserCoords({
+                        lat: position.coords.latitude,
+                        lon: position.coords.longitude
+                    });
+                },
+                (error) => console.log("Erro ao pegar localização:", error)
+            );
+        }
+
+        // 2. Buscar pontos turísticos
+        api.get('/tourist-spots') 
+            .then(response => {
+                setSpots(response.data); // <--- CORRIGIDO: Era setPontosTuristicos
+            })
+            .catch(error => console.error("Erro ao carregar pontos:", error))
+            .finally(() => {
+                setLoading(false); // <--- CORRIGIDO: Para parar o loading
+            });
+    }, []);
 
     const getDistance = (lat1, lon1) => {
         if (!userCoords) return "-- km";
@@ -46,7 +64,6 @@ export default function TouristSpotsScreen() {
     };
 
     const handleGo = (spot) => {
-        // Redireciona para a rota /activity (que vamos criar jájá)
         navigate('/activity', { 
             state: { 
                 targetSpot: spot, 
@@ -87,10 +104,13 @@ export default function TouristSpotsScreen() {
                 </div>
 
                 {loading ? (
-                    <div className="text-center py-10 text-gray-400">Carregando pontos...</div>
+                    <div className="text-center py-10 text-gray-400 flex flex-col items-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mb-2"></div>
+                        Carregando pontos...
+                    </div>
                 ) : (
                     spots.map(spot => (
-                        <div key={spot.id} className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 mb-4">
+                        <div key={spot.id} className="bg-white rounded-3xl shadow-md overflow-hidden border border-gray-100 mb-4 transition-transform active:scale-[0.99]">
                             <div className="h-48 relative">
                                 <img 
                                     src={getSpotImage(spot.name)} 
@@ -112,7 +132,7 @@ export default function TouristSpotsScreen() {
                                         <span>{getDistance(spot.latitude, spot.longitude)} de você</span>
                                     </div>
                                     <div className="text-orange-600 font-bold bg-orange-50 px-3 py-1 rounded-lg border border-orange-100">
-                                        💰 {spot.multiplier}x Capibas
+                                        💰 {spot.multiplier || 3}x Capibas
                                     </div>
                                 </div>
 
@@ -124,7 +144,6 @@ export default function TouristSpotsScreen() {
                                         <Navigation size={18} /> Navegar
                                     </button>
                                     
-                                    {/* BOTÃO ATUALIZADO PARA 'IR' */}
                                     <button 
                                         onClick={() => handleGo(spot)}
                                         className="flex items-center justify-center gap-2 bg-green-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-green-200 hover:bg-green-600 transition-colors active:scale-95"
